@@ -16,6 +16,10 @@ my $REFRESH_ACCESS_TOKEN;
 
 get q{/} => sub {
     my $c = shift;
+} => 'index';
+
+get '/sakeids' => sub {
+    my $c = shift;
 
     if ( !$PROFILE_ID ) {
         init_google_analytics_config();
@@ -32,7 +36,7 @@ get q{/} => sub {
         end_date_default   => '2015-05-20'
     );
 
-} => 'index';
+} => 'sakeids';
 
 post '/gasakeids' => sub {
     my $c = shift;
@@ -63,7 +67,7 @@ post '/gasakeids' => sub {
 
     $sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
 
-    return $c->redirect_to('index');
+    return $c->redirect_to('sakeids');
 };
 
 post '/upload' => sub {
@@ -80,8 +84,12 @@ post '/upload' => sub {
     my $file_path = "public/images/$sake_id.jpg";
     $sake_image->move_to($file_path);
 
-    return $c->redirect_to('index');
+    return $c->redirect_to( $c->param('index') ? 'index' : 'sakeids' );
 };
+
+get '/sakeimageupload' => sub {
+    my $c = shift;
+} => 'sakeimageupload';
 
 # Not found (404)
 get '/missing' => sub { shift->render( template => 'does_not_exist' ) };
@@ -109,6 +117,22 @@ __DATA__
   <head><title>Index</title></head>
   <body>
     <h1>Hello Mojolicious!</h1>
+    <ul>
+      <li>
+        %= link_to 'GoogleAnalyticsのレビューされた酒IDを取得する' => 'sakeids'
+      </li>
+      <li>
+        %= link_to '酒の画像をアップロードする' => 'sakeimageupload'
+      </li>
+    </ul>
+  </body>
+</html>
+
+@@ sakeids.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title>酒IDS</title></head>
+  <body>
     <p>GoogleAnalyticsからレビューされた酒IDを取得する</p>
     <div>
       %= form_for gasakeids => begin
@@ -133,16 +157,32 @@ __DATA__
         <td>
           %= form_for upload => (enctype => 'multipart/form-data') => begin
             %= file_field 'sake_image'
-            %= hidden_field sake_id => $id
+            %= hidden_field 'sake_id' => $id
             %= submit_button 'Upload'
           % end
         </td>
         <td>
-          %= image "./images/$id.jpg"
+          %= image "images/$id.jpg"
         </td>
       </tr>
       % }
     </table>
     % }
+  </body>
+</html>
+
+@@ sakeimageupload.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title>お酒画像アップローダー</title></head>
+  <body>
+    <p>お酒の画像をアップロードするよ</p>
+    %= form_for upload => (enctype => 'multipart/form-data') => begin
+      %= label_for 'sake_id' => 'sake_id'
+      %= text_field 'sake_id'
+      %= file_field 'sake_image'
+      %= hidden_field 'index' => 1
+      %= submit_button 'Upload'
+    % end
   </body>
 </html>
