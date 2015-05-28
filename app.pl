@@ -61,9 +61,6 @@ post '/gasakeids' => sub {
         $ga->{request}->{end_date} = $c->param('end_date');
     }
 
-    if ( $sake_ids && 0 < scalar keys %{$sake_ids} ) {
-        return $c->redirect_to('index');
-    }
     $sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
 
     return $c->redirect_to('index');
