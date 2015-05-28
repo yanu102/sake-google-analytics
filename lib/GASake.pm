@@ -1,5 +1,7 @@
 package GASake;
 
+use strict;
+use warnings;
 use Carp qw/croak/;
 use Mouse;
 use Net::Google::Analytics;
@@ -10,27 +12,27 @@ our $VERSION = '0.1';
 # TODO:singletonにしたい
 
 has 'profile_id' => (
-    is => 'rw',
+    is  => 'rw',
     isa => 'Str'
 );
 
 has 'client_id' => (
-    is => 'rw',
+    is  => 'rw',
     isa => 'Str'
 );
 
 has 'client_secret' => (
-    is => 'rw',
+    is  => 'rw',
     isa => 'Str'
 );
 
 has 'refresh_access_token' => (
-    is => 'rw',
+    is  => 'rw',
     isa => 'Str'
 );
 
 has 'request' => (
-    is => 'rw',
+    is  => 'rw',
     isa => 'Hash'
 );
 
@@ -67,16 +69,16 @@ sub reviewed_sake_ids {
         client_id     => $self->{client_id},
         client_secret => $self->{client_secret}
     );
-    my $token = $oauth->refresh_access_token($self->{refresh_access_token});
+    my $token = $oauth->refresh_access_token( $self->{refresh_access_token} );
     $analytics->token($token);
 
     my $profile_id = 'ga:' . $self->{profile_id};
-    my @request = ('ids' => $profile_id );
-    push @request, %{$self->{request}};
+    my @request = ( 'ids' => $profile_id );
+    push @request, %{ $self->{request} };
     my $req = $analytics->new_request(@request);
 
     my $res = $analytics->retrieve($req);
-    croak "GA error: " . $res->error_message if !$res->is_success;
+    croak 'GA error: ' . $res->error_message if !$res->is_success;
 
     my @ids;
     for my $row ( @{ $res->rows } ) {
