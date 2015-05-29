@@ -1,11 +1,12 @@
 use strict;
 use warnings;
 use lib qw(./lib);
-use GASake;
 use Carp;
-use Mojolicious::Lite;
 use File::Slurp;
+use GASake;
 use JSON;
+use Mojolicious::Lite;
+use Path::Tiny;
 
 my $sake_ids;
 my $ga;
@@ -70,6 +71,26 @@ post '/gasakeids' => sub {
     $c->flash( redirect_from => 'sakeids' );
 
     return $c->redirect_to('sakeids');
+};
+
+get '/sake/(:id)' => sub {
+    my $c = shift;
+
+    my $redirect_from = 'sake/' . $c->param('id');
+
+    $c->flash( redirect_from => $redirect_from );
+
+    return $c->render( template => 'sakeimageupload', id => $c->param('id') );
+};
+
+get '/sake/(:id)/photo' => sub {
+    my $c = shift;
+
+    my $id = $c->param('id');
+
+    my $photo_path = path("public/images/$id.jpg");
+
+    return $c->render( data => $photo_path->slurp, format => 'jpg' );
 };
 
 post '/upload' => sub {
@@ -164,21 +185,23 @@ __DATA__
     <table>
       <tr>
         <td>ID</td>
-        <td>アップローダー</td>
         <td>画像</td>
+        <td>アップローダー</td>
       </tr>
       % for my $id (@$sorted_sake_ids) {
       <tr>
-        <td><%= $id %></td>
+        <td>
+          %= link_to $id => "sake/$id/photo", download => "$id.jpg"
+        </td>
+        <td>
+          %= image "/images/$id.jpg"
+        </td>
         <td>
           %= form_for upload => (enctype => 'multipart/form-data') => begin
             %= file_field 'sake_image'
             %= hidden_field 'sake_id' => $id
             %= submit_button 'Upload'
           % end
-        </td>
-        <td>
-          %= image "images/$id.jpg"
         </td>
       </tr>
       % }
@@ -197,15 +220,16 @@ __DATA__
       %= link_to 'Index' => '/'
     </p>
     % if ($id) {
-      %= image "images/$id.jpg"
+      %= image "/images/$id.jpg"
+      %= link_to 'ダウンロードする' => "sake/$id/photo", download => "$id.jpg"
     % } else {
-     % $id = '';
+      % $id = '';
     % }
     %= form_for upload => (enctype => 'multipart/form-data') => begin
       %= label_for 'sake_id' => 'sake_id'
       %= text_field 'sake_id' => $id
       %= file_field 'sake_image'
-      %= hidden_field 'index' => 1
+      %= hidden_field 'redirect_to' => '/'
       %= submit_button 'Upload'
     % end
   </body>
