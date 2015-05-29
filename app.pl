@@ -2,18 +2,12 @@ use strict;
 use warnings;
 use lib qw(./lib);
 use Carp;
-use File::Slurp;
 use GASake;
-use JSON;
 use Mojolicious::Lite;
 use Path::Tiny;
 
 my $sake_ids;
 my $ga;
-my $PROFILE_ID;
-my $CLIENT_ID;
-my $CLIENT_SECRET;
-my $REFRESH_ACCESS_TOKEN;
 
 get q{/} => sub {
     my $c = shift;
@@ -21,10 +15,6 @@ get q{/} => sub {
 
 get '/sakeids' => sub {
     my $c = shift;
-
-    if ( !$PROFILE_ID ) {
-        init_google_analytics_config();
-    }
 
     my $sorted_sake_ids = [];
     if ( $sake_ids && 0 < scalar keys %{$sake_ids} ) {
@@ -44,11 +34,12 @@ post '/gasakeids' => sub {
 
     # TODO:30分以上経過したら取得可能にする
     if ( !$ga ) {
+        my $config = plugin 'Config';
         $ga                         = GASake->new;
-        $ga->{profile_id}           = $PROFILE_ID;
-        $ga->{client_id}            = $CLIENT_ID;
-        $ga->{client_secret}        = $CLIENT_SECRET;
-        $ga->{refresh_access_token} = $REFRESH_ACCESS_TOKEN;
+        $ga->{profile_id}           = $config->{profile_id};
+        $ga->{client_id}            = $config->{client_id};
+        $ga->{client_secret}        = $config->{client_secret};
+        $ga->{refresh_access_token} = $config->{refresh_access_token};
         $ga->{request}              = {
             start_date => '2015-04-04',
             end_date   => '2015-05-21',
@@ -130,17 +121,6 @@ get '/missing' => sub { shift->render( template => 'does_not_exist' ) };
 
 # Exception (500)
 get 'dies' => sub { croak 'Intentional error' };
-
-sub init_google_analytics_config {
-    my $config = decode_json read_file('./google_analytics_config.json');
-
-    $PROFILE_ID           = $config->{profile_id};
-    $CLIENT_ID            = $config->{client_id};
-    $CLIENT_SECRET        = $config->{client_secret};
-    $REFRESH_ACCESS_TOKEN = $config->{refresh_access_token};
-
-    return;
-}
 
 app->start;
 __DATA__

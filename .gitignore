@@ -1,4 +1,3 @@
 /public/images
 /local
-google_analytics_config.json
-google_analytics_oauth.pl
+app.conf
