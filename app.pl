@@ -67,28 +67,41 @@ post '/gasakeids' => sub {
 
     $sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
 
+    $c->flash( redirect_from => 'sakeids' );
+
     return $c->redirect_to('sakeids');
 };
 
 post '/upload' => sub {
     my $c = shift;
 
+    my $redirect_to = q{/};
+    if ( $c->flash('redirect_from') ) {
+        $redirect_to = $c->flash('redirect_from');
+    }
+
     return $c->render( text => 'File is too big.', status => 200 )
       if $c->req->is_limit_exceeded;
 
-    return $c->redirect_to('index')
+    return $c->redirect_to($redirect_to)
       unless my $sake_image = $c->param('sake_image');
-    return $c->redirect_to('index')
+    return $c->redirect_to($redirect_to)
       unless my $sake_id = $c->param('sake_id');
 
     my $file_path = "public/images/$sake_id.jpg";
     $sake_image->move_to($file_path);
 
-    return $c->redirect_to( $c->param('index') ? 'index' : 'sakeids' );
+    return $c->redirect_to($redirect_to);
 };
 
 get '/sakeimageupload' => sub {
     my $c = shift;
+
+    my $id = $c->param('sake_id') ? $c->param('sake_id') : q{};
+
+    $c->flash( redirect_from => 'sakeimageupload' );
+
+    return $c->render( id => $id );
 } => 'sakeimageupload';
 
 # Not found (404)
@@ -134,6 +147,9 @@ __DATA__
   <head><title>酒IDS</title></head>
   <body>
     <p>GoogleAnalyticsからレビューされた酒IDを取得する</p>
+    <p>
+      %= link_to 'Index' => '/'
+    </p>
     <div>
       %= form_for gasakeids => begin
         %= label_for start_date => 'start_date'
@@ -177,9 +193,17 @@ __DATA__
   <head><title>お酒画像アップローダー</title></head>
   <body>
     <p>お酒の画像をアップロードするよ</p>
+    <p>
+      %= link_to 'Index' => '/'
+    </p>
+    % if ($id) {
+      %= image "images/$id.jpg"
+    % } else {
+     % $id = '';
+    % }
     %= form_for upload => (enctype => 'multipart/form-data') => begin
       %= label_for 'sake_id' => 'sake_id'
-      %= text_field 'sake_id'
+      %= text_field 'sake_id' => $id
       %= file_field 'sake_image'
       %= hidden_field 'index' => 1
       %= submit_button 'Upload'
