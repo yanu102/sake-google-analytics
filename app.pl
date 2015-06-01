@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use lib qw(./lib);
 use Carp;
+use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use GASake;
 use Mojolicious::Lite;
 use Path::Tiny;
@@ -82,6 +83,20 @@ get '/sake/(:id)/photo' => sub {
     my $photo_path = path("public/images/$id.jpg");
 
     return $c->render( data => $photo_path->slurp, format => 'jpg' );
+};
+
+get '/allphotos' => sub {
+    my $c = shift;
+
+    my $zip = Archive::Zip->new;
+
+    $zip->addTree('public/images');
+
+    unless ( $zip->writeToFileNamed('photos.zip', 'zip') == AZ_OK) {
+        croak 'write error';
+    }
+
+    return $c->render( data => path('photos.zip')->slurp, format => 'zip' );
 };
 
 post '/upload' => sub {
