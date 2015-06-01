@@ -92,11 +92,27 @@ get '/allphotos' => sub {
 
     $zip->addTree('public/images');
 
-    unless ( $zip->writeToFileNamed('photos.zip', 'zip') == AZ_OK) {
+    unless ( $zip->writeToFileNamed( 'photos.zip', 'zip' ) == AZ_OK ) {
         croak 'write error';
     }
 
     return $c->render( data => path('photos.zip')->slurp, format => 'zip' );
+};
+
+any '/allphotosupload' => sub {
+    my $c = shift;
+
+    my $success = 0;
+    if ( $c->param('photos_zip') ) {
+        my $zip = Archive::Zip->new;
+        unless ( $zip->read( $c->param('photos_zip') ) == AZ_OK ) {
+            croak 'read error';
+        }
+        $zip->extractTree(q{}, 'public/images');
+        $success = 1;
+    }
+
+    return $c->render( template => 'allphotosupload', success => $success );
 };
 
 post '/upload' => sub {
@@ -227,5 +243,27 @@ __DATA__
       %= hidden_field 'redirect_to' => '/'
       %= submit_button 'Upload'
     % end
+  </body>
+</html>
+
+@@ allphotosupload.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title>お酒画像アップローダー</title></head>
+  <body>
+    <p>お酒の画像をまとめてアップロードするよ</p>
+    <p>
+      %= link_to 'Index' => '/'
+    </p>
+    %= form_for allphotosupload => (enctype => 'multipart/form-data') => begin
+      %= label_for 'photos.zip' => 'photos_zip'
+      %= file_field 'photos_zip'
+      %= submit_button 'Upload'
+    % end
+    % if ($success) {
+    <div>
+      アップロードがが成功しました
+    </div>
+    % }
   </body>
 </html>
