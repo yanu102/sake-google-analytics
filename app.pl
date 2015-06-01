@@ -33,7 +33,6 @@ get '/sakeids' => sub {
 post '/gasakeids' => sub {
     my $c = shift;
 
-    # TODO:30分以上経過したら取得可能にする
     if ( !$ga ) {
         my $config = plugin 'Config';
         $ga                         = GASake->new;
@@ -51,11 +50,16 @@ post '/gasakeids' => sub {
         };
     }
 
-    if ( $c->param('start_date') ) {
-        $ga->{request}->{start_date} = $c->param('start_date');
+    my $new_start_date = $c->param('start_date');
+    my $new_end_date   = $c->param('end_date');
+    if ( $ga->{request}->{start_date} eq $new_start_date && $ga->{request}->{end_date} eq $new_end_date ) {
+        return $c->redirect_to('sakeids');
     }
-    if ( $c->param('end_date') ) {
-        $ga->{request}->{end_date} = $c->param('end_date');
+    if ($new_start_date) {
+        $ga->{request}->{start_date} = $new_start_date;
+    }
+    if ($new_end_date) {
+        $ga->{request}->{end_date} = $new_end_date;
     }
 
     $sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
@@ -108,7 +112,7 @@ any '/allphotosupload' => sub {
         unless ( $zip->read( $c->param('photos_zip') ) == AZ_OK ) {
             croak 'read error';
         }
-        $zip->extractTree(q{}, 'public/images');
+        $zip->extractTree( q{}, 'public/images' );
         $success = 1;
     }
 
