@@ -2,26 +2,30 @@ use strict;
 use warnings;
 use lib qw(./lib);
 use Carp;
+use Amazon::S3;
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use GASake;
 use Mojolicious::Lite;
 use Path::Tiny;
+use Smart::Comments;
 
 my $ga_sake_ids;
 my $ga;
+my $s3;
+my $bucket;
+my $config;
 
 get q{/} => sub {
     my $c = shift;
+
+    _bucket();
 } => 'index';
 
 any '/sakeids' => sub {
     my $c = shift;
 
-    my $dir = path('public/images');
-    my @sake_ids;
-    for my $photo ( $dir->children ) {
-        push @sake_ids, $photo->basename('.jpg');
-    }
+    _bucket();
+    my @sake_ids = map { $_->{key} } @{ $bucket->list->{keys} };
 
     my $start_id = 1;
     my $end_id   = 10;
@@ -60,7 +64,9 @@ post '/gasakeids' => sub {
     my $c = shift;
 
     if ( !$ga ) {
-        my $config = plugin 'Config';
+        if ( !$config ) {
+            $config = plugin 'Config';
+        }
         $ga                         = GASake->new;
         $ga->{profile_id}           = $config->{profile_id};
         $ga->{client_id}            = $config->{client_id};
@@ -108,9 +114,13 @@ get '/sake/(:id)/photo' => sub {
 
     my $id = $c->param('id');
 
-    my $photo_path = path("public/images/$id.jpg");
-
-    return $c->render( data => $photo_path->slurp, format => 'jpg' );
+    _bucket();
+    if ( $bucket->head_key($id) ) {
+        return $c->render( data => $bucket->get_key($id)->{value}, format => 'jpg' );
+    }
+    else {
+        return $c->render( data => path('no-image.png')->slurp, format => 'jpg' );
+    }
 };
 
 get '/downloadzip' => sub {
@@ -155,12 +165,13 @@ post '/upload' => sub {
       if $c->req->is_limit_exceeded;
 
     return $c->redirect_to($redirect_to)
-      unless my $sake_image = $c->param('sake_image');
+      unless my $image = $c->param('sake_image');
     return $c->redirect_to($redirect_to)
-      unless my $sake_id = $c->param('sake_id');
+      unless my $id = $c->param('sake_id');
 
-    my $file_path = "public/images/$sake_id.jpg";
-    $sake_image->move_to($file_path);
+    _bucket();
+    $bucket->add_key( $id, $image->{asset}->slurp, { content_type => $image->{headers}->content_type } )
+      or croak $s3->err . ':' . $s3->errstr;
 
     return $c->redirect_to($redirect_to);
 };
@@ -180,6 +191,27 @@ get '/missing' => sub { shift->render( template => 'does_not_exist' ) };
 
 # Exception (500)
 get 'dies' => sub { croak 'Intentional error' };
+
+sub _bucket {
+    if ( !$bucket ) {
+        if ( !$s3 ) {
+            ### s3 is not exist
+            if ( !$config ) {
+                ### config is not exist
+                $config = plugin 'Config';
+            }
+            $s3 = Amazon::S3->new(
+                {
+                    aws_access_key_id     => $config->{aws_access_key_id},
+                    aws_secret_access_key => $config->{aws_secret_access_key},
+                    retry                 => 1
+                }
+            );
+        }
+        $bucket = $s3->bucket('bacchus-images');
+    }
+    return;
+}
 
 app->start;
 __DATA__
@@ -237,7 +269,7 @@ __DATA__
           %= link_to $id => "sake/$id/photo", download => "$id.jpg"
         </td>
         <td>
-          %= image "/images/$id.jpg"
+          %= image "/sake/$id/photo", height => '200'
         </td>
         <td>
           %= form_for upload => (enctype => 'multipart/form-data') => begin
@@ -287,7 +319,7 @@ __DATA__
           %= link_to $id => "sake/$id/photo", download => "$id.jpg"
         </td>
         <td>
-          %= image "/images/$id.jpg"
+          %= image "/sake/$id/photo", height => '200'
         </td>
         <td>
           %= form_for upload => (enctype => 'multipart/form-data') => begin
@@ -313,7 +345,7 @@ __DATA__
       %= link_to 'Index' => '/'
     </p>
     % if ($id) {
-      %= image "/images/$id.jpg"
+      %= image "/sake/$id/photo", height => '200'
       %= link_to 'ダウンロードする' => "sake/$id/photo", download => "$id.jpg"
     % } else {
       % $id = '';
