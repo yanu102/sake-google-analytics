@@ -54,7 +54,6 @@ get '/gasakeids' => sub {
         start_date_default => '2015-04-04',
         end_date_default   => '2015-05-20'
     );
-
 };
 
 post '/gasakeids' => sub {
@@ -91,8 +90,6 @@ post '/gasakeids' => sub {
 
     $ga_sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
 
-    $c->flash( redirect_from => 'gasakeids' );
-
     return $c->redirect_to('gasakeids');
 };
 
@@ -103,7 +100,7 @@ get '/sake/(:id)' => sub {
 
     $c->flash( redirect_from => $redirect_from );
 
-    return $c->render( template => 'sakeimageupload', id => $c->param('id') );
+    return $c->render( template => 'uploadimage', id => $c->param('id') );
 };
 
 get '/sake/(:id)/photo' => sub {
@@ -116,21 +113,21 @@ get '/sake/(:id)/photo' => sub {
     return $c->render( data => $photo_path->slurp, format => 'jpg' );
 };
 
-get '/allphotos' => sub {
+get '/downloadzip' => sub {
     my $c = shift;
 
     my $zip = Archive::Zip->new;
 
     $zip->addTree('public/images');
 
-    unless ( $zip->writeToFileNamed( 'photos.zip', 'zip' ) == AZ_OK ) {
+    unless ( $zip->writeToFileNamed( 'bacchus_photos.zip', 'zip' ) == AZ_OK ) {
         croak 'write error';
     }
 
-    return $c->render( data => path('photos.zip')->slurp, format => 'zip' );
+    return $c->render( data => path('bacchus_photos.zip')->slurp, format => 'zip' );
 };
 
-any '/allphotosupload' => sub {
+any '/uploadzip' => sub {
     my $c = shift;
 
     my $success = 0;
@@ -143,7 +140,7 @@ any '/allphotosupload' => sub {
         $success = 1;
     }
 
-    return $c->render( template => 'allphotosupload', success => $success );
+    return $c->render( template => 'uploadzip', success => $success );
 };
 
 post '/upload' => sub {
@@ -168,15 +165,15 @@ post '/upload' => sub {
     return $c->redirect_to($redirect_to);
 };
 
-get '/sakeimageupload' => sub {
+get '/uploadimage' => sub {
     my $c = shift;
 
     my $id = $c->param('sake_id') ? $c->param('sake_id') : q{};
 
-    $c->flash( redirect_from => 'sakeimageupload' );
+    $c->flash( redirect_from => 'uploadimage' );
 
     return $c->render( id => $id );
-} => 'sakeimageupload';
+};
 
 # Not found (404)
 get '/missing' => sub { shift->render( template => 'does_not_exist' ) };
@@ -201,7 +198,7 @@ __DATA__
         %= link_to '登録されている酒IDを取得する' => 'sakeids'
       </li>
       <li>
-        %= link_to '酒の画像をアップロードする' => 'sakeimageupload'
+        %= link_to '酒の画像をアップロードする' => 'uploadimage'
       </li>
     </ul>
   </body>
@@ -306,7 +303,7 @@ __DATA__
   </body>
 </html>
 
-@@ sakeimageupload.html.ep
+@@ uploadimage.html.ep
 <!DOCTYPE html>
 <html>
   <head><title>お酒画像アップローダー</title></head>
@@ -331,7 +328,7 @@ __DATA__
   </body>
 </html>
 
-@@ allphotosupload.html.ep
+@@ uploadzip.html.ep
 <!DOCTYPE html>
 <html>
   <head><title>お酒画像アップローダー</title></head>
@@ -340,7 +337,7 @@ __DATA__
     <p>
       %= link_to 'Index' => '/'
     </p>
-    %= form_for allphotosupload => (enctype => 'multipart/form-data') => begin
+    %= form_for uploadzip => (enctype => 'multipart/form-data') => begin
       %= label_for 'photos.zip' => 'photos_zip'
       %= file_field 'photos_zip'
       %= submit_button 'Upload'
