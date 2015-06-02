@@ -7,28 +7,55 @@ use GASake;
 use Mojolicious::Lite;
 use Path::Tiny;
 
-my $sake_ids;
+my $ga_sake_ids;
 my $ga;
 
 get q{/} => sub {
     my $c = shift;
 } => 'index';
 
-get '/sakeids' => sub {
+any '/sakeids' => sub {
     my $c = shift;
 
-    my $sorted_sake_ids = [];
-    if ( $sake_ids && 0 < scalar keys %{$sake_ids} ) {
-        $sorted_sake_ids = [ sort { $a <=> $b } map { $_ + 0 } keys %{$sake_ids} ];
+    my $dir = path('public/images');
+    my @sake_ids;
+    for my $photo ( $dir->children ) {
+        push @sake_ids, $photo->basename('.jpg');
+    }
+
+    my $start_id = 1;
+    my $end_id   = 10;
+    if ( $c->param('start_id') ) {
+        $start_id = $c->param('start_id');
+    }
+    if ( $c->param('end_id') ) {
+        $end_id = $c->param('end_id');
+    }
+    my $sorted_sake_ids =
+      [ sort { $a <=> $b } grep { $start_id <= $_ && $_ <= $end_id } map { $_ + 0 } grep { /\d+/msx } @sake_ids ];
+
+    return $c->render(
+        sorted_sake_ids => $sorted_sake_ids,
+        start_id        => $start_id,
+        end_id          => $end_id,
+    );
+};
+
+get '/gasakeids' => sub {
+    my $c = shift;
+
+    my $sorted_ga_sake_ids = [];
+    if ( $ga_sake_ids && 0 < scalar keys %{$ga_sake_ids} ) {
+        $sorted_ga_sake_ids = [ sort { $a <=> $b } map { $_ + 0 } keys %{$ga_sake_ids} ];
     }
 
     return $c->render(
-        sorted_sake_ids    => $sorted_sake_ids,
+        sorted_ga_sake_ids => $sorted_ga_sake_ids,
         start_date_default => '2015-04-04',
         end_date_default   => '2015-05-20'
     );
 
-} => 'sakeids';
+};
 
 post '/gasakeids' => sub {
     my $c = shift;
@@ -53,7 +80,7 @@ post '/gasakeids' => sub {
     my $new_start_date = $c->param('start_date');
     my $new_end_date   = $c->param('end_date');
     if ( $ga->{request}->{start_date} eq $new_start_date && $ga->{request}->{end_date} eq $new_end_date ) {
-        return $c->redirect_to('sakeids');
+        return $c->redirect_to('gasakeids');
     }
     if ($new_start_date) {
         $ga->{request}->{start_date} = $new_start_date;
@@ -62,11 +89,11 @@ post '/gasakeids' => sub {
         $ga->{request}->{end_date} = $new_end_date;
     }
 
-    $sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
+    $ga_sake_ids = { map { $_ => 1 } grep { /^\d+$/msx } $ga->reviewed_sake_ids };
 
-    $c->flash( redirect_from => 'sakeids' );
+    $c->flash( redirect_from => 'gasakeids' );
 
-    return $c->redirect_to('sakeids');
+    return $c->redirect_to('gasakeids');
 };
 
 get '/sake/(:id)' => sub {
@@ -168,7 +195,10 @@ __DATA__
     <h1>Hello Mojolicious!</h1>
     <ul>
       <li>
-        %= link_to 'GoogleAnalyticsのレビューされた酒IDを取得する' => 'sakeids'
+        %= link_to 'GoogleAnalyticsのレビューされた酒IDを取得する' => 'gasakeids'
+      </li>
+      <li>
+        %= link_to '登録されている酒IDを取得する' => 'sakeids'
       </li>
       <li>
         %= link_to '酒の画像をアップロードする' => 'sakeimageupload'
@@ -178,6 +208,57 @@ __DATA__
 </html>
 
 @@ sakeids.html.ep
+<!DOCTYPE html>
+<html>
+  <head><title>酒IDS</title></head>
+  <body>
+    <p>登録されている酒IDを取得する</p>
+    <p>
+      %= link_to 'Index' => '/'
+    </p>
+    <div>
+      %= form_for sakeids => begin
+        %= label_for start_id => 'start_id'
+        %= text_field start_id => $start_id
+        %= label_for end_id => 'end_id'
+        %= text_field end_id => $end_id
+        %= submit_button '酒IDを表示する'
+      %= end
+    </div>
+    <p>IDが <%= $start_id %> 〜 <%= $end_id %> の画像</p>
+    <p>表示IDの合計件数:<%= scalar(@$sorted_sake_ids) %></p>
+    % if (0 < scalar(@$sorted_sake_ids)) {
+    <table>
+      <tr>
+        <td>ID</td>
+        <td>画像</td>
+        <td>アップローダー</td>
+      </tr>
+      % for my $id (@$sorted_sake_ids) {
+      <tr>
+        <td>
+          %= link_to $id => "sake/$id/photo", download => "$id.jpg"
+        </td>
+        <td>
+          %= image "/images/$id.jpg"
+        </td>
+        <td>
+          %= form_for upload => (enctype => 'multipart/form-data') => begin
+            %= file_field 'sake_image'
+            %= hidden_field 'sake_id' => $id
+            %= submit_button 'Upload'
+          % end
+        </td>
+      </tr>
+      % }
+    </table>
+    % } else {
+    <p>IDが <%= $start_id %> 〜 <%= $end_id %> の画像はありません。</p>
+    % }
+  </body>
+</html>
+
+@@ gasakeids.html.ep
 <!DOCTYPE html>
 <html>
   <head><title>酒IDS</title></head>
@@ -195,15 +276,15 @@ __DATA__
         %= submit_button 'GoogleAnalyticsデータ取得'
       %= end
     </div>
-    % if (0 < scalar(@$sorted_sake_ids)) {
-    <p>レビューIDの合計件数:<%= scalar(@$sorted_sake_ids) %></p>
+    % if (0 < scalar(@$sorted_ga_sake_ids)) {
+    <p>レビューIDの合計件数:<%= scalar(@$sorted_ga_sake_ids) %></p>
     <table>
       <tr>
         <td>ID</td>
         <td>画像</td>
         <td>アップローダー</td>
       </tr>
-      % for my $id (@$sorted_sake_ids) {
+      % for my $id (@$sorted_ga_sake_ids) {
       <tr>
         <td>
           %= link_to $id => "sake/$id/photo", download => "$id.jpg"
