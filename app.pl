@@ -123,36 +123,6 @@ get '/sake/(:id)/photo' => sub {
     }
 };
 
-get '/downloadzip' => sub {
-    my $c = shift;
-
-    my $zip = Archive::Zip->new;
-
-    $zip->addTree('public/images');
-
-    unless ( $zip->writeToFileNamed( 'bacchus_photos.zip', 'zip' ) == AZ_OK ) {
-        croak 'write error';
-    }
-
-    return $c->render( data => path('bacchus_photos.zip')->slurp, format => 'zip' );
-};
-
-any '/uploadzip' => sub {
-    my $c = shift;
-
-    my $success = 0;
-    if ( $c->param('photos_zip') ) {
-        my $zip = Archive::Zip->new;
-        unless ( $zip->read( $c->param('photos_zip') ) == AZ_OK ) {
-            croak 'read error';
-        }
-        $zip->extractTree( q{}, 'public/images' );
-        $success = 1;
-    }
-
-    return $c->render( template => 'uploadzip', success => $success );
-};
-
 post '/upload' => sub {
     my $c = shift;
 
@@ -219,9 +189,9 @@ __DATA__
 @@ index.html.ep
 <!DOCTYPE html>
 <html>
-  <head><title>Index</title></head>
+  <head><title>Bacchus Image Uploader</title></head>
   <body>
-    <h1>Hello Mojolicious!</h1>
+    <h1>Hello Bacchus Image Uploader</h1>
     <ul>
       <li>
         %= link_to 'GoogleAnalyticsのレビューされた酒IDを取得する' => 'gasakeids'
@@ -239,7 +209,7 @@ __DATA__
 @@ sakeids.html.ep
 <!DOCTYPE html>
 <html>
-  <head><title>酒IDS</title></head>
+  <head><title>登録されている酒ID</title></head>
   <body>
     <p>登録されている酒IDを取得する</p>
     <p>
@@ -290,7 +260,7 @@ __DATA__
 @@ gasakeids.html.ep
 <!DOCTYPE html>
 <html>
-  <head><title>酒IDS</title></head>
+  <head><title>GA経由レビューされた酒ID</title></head>
   <body>
     <p>GoogleAnalyticsからレビューされた酒IDを取得する</p>
     <p>
@@ -357,27 +327,5 @@ __DATA__
       %= hidden_field 'redirect_to' => '/'
       %= submit_button 'Upload'
     % end
-  </body>
-</html>
-
-@@ uploadzip.html.ep
-<!DOCTYPE html>
-<html>
-  <head><title>お酒画像アップローダー</title></head>
-  <body>
-    <p>お酒の画像をまとめてアップロードするよ</p>
-    <p>
-      %= link_to 'Index' => '/'
-    </p>
-    %= form_for uploadzip => (enctype => 'multipart/form-data') => begin
-      %= label_for 'photos.zip' => 'photos_zip'
-      %= file_field 'photos_zip'
-      %= submit_button 'Upload'
-    % end
-    % if ($success) {
-    <div>
-      アップロードがが成功しました
-    </div>
-    % }
   </body>
 </html>
