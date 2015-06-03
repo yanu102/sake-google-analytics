@@ -1,9 +1,7 @@
 use strict;
 use warnings;
-use lib qw(./lib);
 use Carp;
 use Amazon::S3;
-use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use GASake;
 use Mojolicious::Lite;
 use Path::Tiny;
