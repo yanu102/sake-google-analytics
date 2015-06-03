@@ -15,10 +15,12 @@ bacchusのsake_idに対する画像を表示する
 
 
     {
-        profile_id           => "***",
-        client_id            => "***",
-        client_secret        => "***",
-        refresh_access_token => "***"
+        profile_id            => "***",
+        client_id             => "***",
+        client_secret         => "***",
+        refresh_access_token  => "***",
+        aws_access_key_id     => "***",
+        aws_secret_access_key => "***"
     };
 
 `client_id`,`client_secret`はアプリの登録を行って取得してください。
@@ -29,6 +31,4 @@ bacchusのsake_idに対する画像を表示する
 
 出力されたトークンをメモしてください。
 
-保存したファイルは`./public/images/`に保存されます。
-現段階ではダウンロードボタンは無いので、各自でコピーしてください。
-
+画像ファイルはAmazon::S3に保存されます。
