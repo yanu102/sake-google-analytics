@@ -234,7 +234,7 @@ __DATA__
       % for my $id (@$sorted_sake_ids) {
       <tr>
         <td>
-          %= link_to $id => "sake/$id/photo", download => "$id.jpg"
+          %= link_to $id => "/sake/$id/photo", download => "$id.jpg"
         </td>
         <td>
           %= image "/sake/$id/photo", height => '200'
@@ -284,7 +284,7 @@ __DATA__
       % for my $id (@$sorted_ga_sake_ids) {
       <tr>
         <td>
-          %= link_to $id => "sake/$id/photo", download => "$id.jpg"
+          %= link_to $id => "/sake/$id/photo", download => "$id.jpg"
         </td>
         <td>
           %= image "/sake/$id/photo", height => '200'
@@ -314,7 +314,7 @@ __DATA__
     </p>
     % if ($id) {
       %= image "/sake/$id/photo", height => '200'
-      %= link_to 'ダウンロードする' => "sake/$id/photo", download => "$id.jpg"
+      %= link_to 'ダウンロードする' => "/sake/$id/photo", download => "$id.jpg"
     % } else {
       % $id = '';
     % }
