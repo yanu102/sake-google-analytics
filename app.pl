@@ -114,10 +114,11 @@ get '/sake/(:id)/photo' => sub {
 
     _bucket();
     if ( $bucket->head_key($id) ) {
-        return $c->render( data => $bucket->get_key($id)->{value}, format => 'jpg' );
+        my $object = $bucket->get_key($id);
+        return $c->render( data => $object->{value}, format => $object->{content_type} =~ /\/(.+)$/msx );
     }
     else {
-        return $c->render( data => path('no-image.png')->slurp, format => 'jpg' );
+        return $c->render( data => path('no-image.png')->slurp, format => 'png', status => '404' );
     }
 };
 
@@ -234,7 +235,7 @@ __DATA__
       % for my $id (@$sorted_sake_ids) {
       <tr>
         <td>
-          %= link_to $id => "/sake/$id/photo", download => "$id.jpg"
+          <%= $id %>
         </td>
         <td>
           %= image "/sake/$id/photo", height => '200'
@@ -284,7 +285,7 @@ __DATA__
       % for my $id (@$sorted_ga_sake_ids) {
       <tr>
         <td>
-          %= link_to $id => "/sake/$id/photo", download => "$id.jpg"
+          <%= $id %>
         </td>
         <td>
           %= image "/sake/$id/photo", height => '200'
@@ -314,7 +315,6 @@ __DATA__
     </p>
     % if ($id) {
       %= image "/sake/$id/photo", height => '200'
-      %= link_to 'ダウンロードする' => "/sake/$id/photo", download => "$id.jpg"
     % } else {
       % $id = '';
     % }
